@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML & CSS</title>
+    <style>
+        .line-through {
+            text-decoration: line-through;
+            color: red;
+        }
+        .italic {
+            font-style: italic;
+        }
+        .bold{
+            font-weight: bold;
+        }
+
+        .div-block{
+            width: 50%;
+            background-color: red;
+        }
+        .span-block {
+            width: 50%;
+            background-color: yellow;
+        }
+        .form-container {
+            border-radius: 5px;
+            background-color: #f2f2f2;
+            padding: 20px;
+            justify-items: center;
+        }
+        .input-block{
+            width: 50%;
+            /* background-color: aqua; */
+            background-color: white;
+            padding: 8px;
+            margin-bottom: 5px;
+            border: 2px solid black;
+            border-radius: 5px;
+        }
+        .submit-btn{
+            width: 80px;
+            height: 40px;
+            margin-top: 10px;
+            margin-left: 5rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <p class="line-through">This text has a line through it.</p>
+    <p class="italic">This text is italicized.</p>
+    <p class="bold">This text is bold.</p>
+    <h1>Table</h1>
+    <table border="2">
+        <caption>Fruits Table</caption>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Loaction</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Mustaq</td>
+                <td>AP</td>
+            </tr>
+            <tr>
+                <td>Kushagra</td>
+                <td>UP</td>
+            </tr>
+
+        </tbody>
+    </table>
+    <h3 style="text-decoration: underline;">Ordered List</h3>
+    <ol>
+        <li>HTML</li>
+        <li>CSS</li>
+        <li>Javascript</li>
+    </ol>
+    <h3 style="text-decoration: underline;">Un-Ordered List</h3>
+    <ul>
+        <li>HTML</li>
+        <li>CSS</li>
+        <li>Javascript</li>
+    </ul>
+
+    <h3 style="text-decoration: underline;">Div and Span</h3>
+    <div class="div-block">Div</div>
+    <div class="div-block">Div</div>
+    <span class="span-block">Span</span>
+    <span class="span-block">Span</span>
+    <h3 style="text-decoration: underline;">Form</h3>
+    <form action="" class="form-container">
+        <h1 style="font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;">Form</h1>
+        <div class="input-block">
+            <label for="">Full Name: </label>
+            <input type="text" name="name" id="" placeholder="Enter your Name">
+        </div>
+        <div class="input-block">
+            <label for="">Email Addres: </label>
+            <input type="email" name="email" id="" placeholder="Enter your email address">    
+        </div>
+        <div class="input-block">
+            <label for="">Contact Number: </label>
+            <input type="number" placeholder="Enter contact number">
+        </div>
+        <div class="input-block">
+            <label for="">Set your Password : </label>
+            <input type="password" placeholder="Set your password">
+        </div>
+        <div class="input-block">
+            <label for="">Select your Gender</label>
+            <select name="gender" id="">
+                <option value="select your option">Select your Option</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+            </select>
+        </div>
+        <div class="input-block">
+            <label for="">Select Skills : </label>
+            <div>
+            <input type="checkbox" name="html" id="">HTML
+            <input type="checkbox" name="html" id="">CSS
+            <input type="checkbox" name="html" id="">Javascript
+            </div>
+            
+        </div>
+        <div class="input-block">
+            <label for="">Select your Preferred Location : </label>
+            <input type="radio">Hyderabad
+            <input type="radio">Banglore
+            <input type="radio">Chennai
+        </div>
+       <div class="input-block">
+        <label for="">Address: </label>
+        <div>
+            <textarea name="address" id="" rows="5" cols="50" placeholder="Enter your Address"></textarea>
+        </div>
+       
+       </div>
+       <div class="input-block">
+        <label for="">Enter start Date : </label>
+        <input type="date" name="" id="">
+       </div>
+       <div class="input-block">
+        <label for="">Upload your Resume: </label>
+        <input type="file">
+       </div>
+       <div>
+        <button class="submit-btn" type="submit" style="background-color: green; color: white;">Submit</button>
+        <p>If you have any queries <a href="https://www.google.com">click here</a></p>
+       </div>
+    </form>
+    <h3>iFrame Example</h3>
+    <iframe src="https://www.example.com" width="600" height="400"></iframe>
+
+</body>
+</html>
