@@ -1,0 +1,130 @@
+[HttpPost("assign-trip")]
+public async Task<IActionResult> AssignTrip(TripDto tripDto)
+{
+    try
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdStr, out int userId))
+        {
+            return Unauthorized(new { message = "Invalid User ID" });
+        }
+
+        var trip = await _tripService.AssignTripAsync(tripDto, userId);
+        if (trip == null)
+        {
+            return BadRequest(new { message = "Trip assignment failed due to time conflict or invalid data." });
+        }
+
+        return Ok(new { message = "Trip assigned Successfully" }); // ✅ fixed
+    }
+    catch (TripOverlapException ex)
+    {
+        return Conflict(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+    }
+
+}
+
+[HttpPut("{id}")]
+public async Task<IActionResult> EditTrip(TripDto tripDto, int id)
+{
+    try
+    {
+        var trip = await _tripService.EditTripAsync(tripDto, id);
+        if (trip == null) return BadRequest();
+        return Ok(new { message = "Trip Updated Successfully" });
+
+
+    }
+    catch (TripOverlapException ex)
+    {
+        return Conflict(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+    }
+}
+public async Task<Trip> EditTripAsync(TripDto tripDto, int id)
+{
+    var trip = await _context.Trips.FindAsync(id);
+    if (trip == null)
+    {
+        _logger.LogWarning($"Trip with ID {id} not found for editing.");
+        return null;
+    }
+
+    if (await IsTripOverlaped(id, tripDto.DriverId, tripDto.VehicleId, tripDto.TripStartTime, tripDto.TripEndTime))
+    {
+        _logger.LogWarning("Trip edit failed due to overlap.");
+        throw new TripOverlapException("Trip overlap detected. Please choose different times or resources.");
+        
+    }
+
+
+    trip.VehicleId = tripDto.VehicleId;
+    trip.DriverId = tripDto.DriverId;
+    trip.Origin = tripDto.Origin;
+    trip.Destination = tripDto.Destination;
+    trip.TripStartTime = tripDto.TripStartTime;
+    trip.TripEndTime = tripDto.TripEndTime;
+
+    await _context.SaveChangesAsync();
+    _logger.LogInformation($"Trip ID {id} edited successfully.");
+    return trip;
+}
+public async Task<Trip> AssignTripAsync(TripDto tripDto, int userId)
+{
+    var fleetManager = _context.FleetManagers.FirstOrDefault(fm => fm.UserId == userId);
+    if (fleetManager == null)
+    {
+        _logger.LogWarning($"Fleet manager with ID {userId} not found.");
+        return null;
+    }
+
+    if (tripDto.TripEndTime <= tripDto.TripStartTime)
+    {
+        _logger.LogWarning("Trip end time must be after start time.");
+        return null;
+    }
+
+    if (await IsTripOverlaped(null, tripDto.DriverId, tripDto.VehicleId, tripDto.TripStartTime, tripDto.TripEndTime))
+    {
+        _logger.LogWarning("Trip conflict detected.");
+        throw new TripOverlapException("Trip overlap detected. Please choose different times or resources.");
+    }
+
+    //Convert UTC → IST
+    var istZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+    var tripStartIST = TimeZoneInfo.ConvertTimeFromUtc(tripDto.TripStartTime.ToUniversalTime(), istZone);
+    var tripEndIST = TimeZoneInfo.ConvertTimeFromUtc(tripDto.TripEndTime.ToUniversalTime(), istZone);
+    var submissionDateIST = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, istZone);
+    var trip = new Trip
+    {
+        FleetManagerId = fleetManager.FleetManagerId,
+        DriverId = tripDto.DriverId,
+        VehicleId = tripDto.VehicleId,
+        Origin = tripDto.Origin,
+        Destination = tripDto.Destination,
+        TripStartTime = tripStartIST,
+        TripEndTime = tripEndIST,
+        SubmissionDate = submissionDateIST
+    };
+
+    _context.Trips.Add(trip);
+    await _context.SaveChangesAsync();
+
+    _logger.LogInformation($"Trip assigned successfully by Fleet Manager: {fleetManager.Name}");
+    return trip;
+}
+private async Task<bool> IsTripOverlaped(int? tripIdToExclude, int driverId, int vehicleId, DateTime startTime, DateTime endTime)
+{
+    return await _context.Trips.AnyAsync(t =>
+        (!tripIdToExclude.HasValue || t.TripId != tripIdToExclude.Value) &&
+        (t.DriverId == driverId || t.VehicleId == vehicleId) &&
+        t.TripStartTime < endTime &&
+        startTime < t.TripEndTime);
+}
