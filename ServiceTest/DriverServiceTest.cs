@@ -1,82 +1,122 @@
 using DriverTripScheduleApp.Data;
 using DriverTripScheduleApp.DTOs;
-using DriverTripScheduleApp.IRepositories;
 using DriverTripScheduleApp.Models;
+using DriverTripScheduleApp.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace DriverTripScheduleApp.Services
+namespace DriverTripScheduleAppTest
 {
-    public class DriverService:IDriverService
+    [TestClass]
+    public class DriverServiceTests
     {
-        private readonly AppDbContext _context;
-        private readonly ILogger<DriverService> _logger;
+        private AppDbContext _context;
+        private Mock<ILogger<DriverService>> _loggerMock;
+        private DriverService _driverService;
 
-
-        public DriverService(AppDbContext context, ILogger<DriverService> logger)
+        [TestInitialize]
+        public void Setup()
         {
-            _logger= logger;
-            _context = context;
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
+
+            _context = new AppDbContext(options);
+            _loggerMock = new Mock<ILogger<DriverService>>();
+            _driverService = new DriverService(_context, _loggerMock.Object);
+
+            SeedTestData();
         }
-        public async Task<List<Driver>> GetAllDriversAsync()
+
+        private void SeedTestData()
         {
-            _logger.LogInformation("Fetching all Drivers");
-
-            var drivers = await _context.Drivers.ToListAsync();
-            if (drivers == null || !drivers.Any())
+            _context.Users.Add(new User { UserId = 1, Username = "DriverUser" });
+            _context.Drivers.Add(new Driver
             {
-                _logger.LogWarning("Driver list is Empty");
-                return new List<Driver>();
-            }
-            _logger.LogInformation("Getting all Drivers");
-            return drivers;
-
-
+                DriverId = 1,
+                UserId = 1,
+                Name = "Test Driver",
+                LicenseNumber = "LIC123"
+            });
+            _context.SaveChanges();
         }
-        public async Task<Driver> UpdateDriverDetailsAsync(DriverDto driverDto,int driverId)
+
+        [TestMethod]
+        public async Task GetAllDriversAsync_WhenDriversExist_ReturnsDrivers()
         {
-            var driver = await _context.Drivers.FindAsync(driverId);
-            if (driver == null)
-            {
-                _logger.LogWarning($"Driver with DriverId {driverId} not found.");
-                return null;
-            }
-            var userId = driver.UserId;
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-            {
-                _logger.LogWarning($"User Driver with UserId {userId} not found.");
-                return null;
-            }
-            driver.LicenseNumber = driverDto.LicenseNumber;
-            driver.Name = driverDto.Name;
-            user.Username=driverDto.Name;
+            var result = await _driverService.GetAllDriversAsync();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(1, result.Count);
+            Assert.AreEqual("Test Driver", result[0].Name);
+        }
+
+        [TestMethod]
+        public async Task GetAllDriversAsync_WhenNoDriversExist_ReturnsEmptyList()
+        {
+            _context.Drivers.RemoveRange(_context.Drivers);
             await _context.SaveChangesAsync();
-            return driver;
-  
 
+            var result = await _driverService.GetAllDriversAsync();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Count);
         }
 
-        public async Task<bool> DeleteDriverAsync(int driverId)
+        [TestMethod]
+        public async Task UpdateDriverDetailsAsync_WithValidDriver_UpdatesDriverAndUser()
         {
-            _logger.LogInformation("Fetching driverId and attempting to delete");
-            var driver = await _context.Drivers.FindAsync(driverId);
-            if (driver == null)
+            var dto = new DriverDto
             {
-                _logger.LogWarning($"Driver with DriverId {driverId} not found.");
-                return false;
-            }
-            var userId = driver.UserId;
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
+                Name = "Updated Driver",
+                LicenseNumber = "NEW123"
+            };
+
+            var result = await _driverService.UpdateDriverDetailsAsync(dto, 1);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual("Updated Driver", result.Name);
+
+            var updatedUser = await _context.Users.FindAsync(1);
+            Assert.AreEqual("Updated Driver", updatedUser.Username);
+        }
+
+        [TestMethod]
+        public async Task UpdateDriverDetailsAsync_WithInvalidDriver_ReturnsNull()
+        {
+            var dto = new DriverDto
             {
-                _logger.LogWarning($"User Driver with UserId {userId} not found.");
-                return false;
-            }
-            _context.Drivers.Remove(driver);
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-            return true;
+                Name = "NoDriver",
+                LicenseNumber = "X123"
+            };
+
+            var result = await _driverService.UpdateDriverDetailsAsync(dto, 999); // non-existent ID
+
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public async Task DeleteDriverAsync_WithValidDriver_DeletesDriverAndUser()
+        {
+            var result = await _driverService.DeleteDriverAsync(1);
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, _context.Drivers.Count());
+            Assert.AreEqual(0, _context.Users.Count());
+        }
+
+        [TestMethod]
+        public async Task DeleteDriverAsync_WithInvalidDriver_ReturnsFalse()
+        {
+            var result = await _driverService.DeleteDriverAsync(999); // non-existent ID
+
+            Assert.IsFalse(result);
         }
     }
 }
-
