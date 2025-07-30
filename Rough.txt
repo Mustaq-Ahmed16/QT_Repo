@@ -128,3 +128,95 @@ private async Task<bool> IsTripOverlaped(int? tripIdToExclude, int driverId, int
         t.TripStartTime < endTime &&
         startTime < t.TripEndTime);
 }
+
+
+ public async Task<Trip> EditTripAsync(TripDto tripDto, int id)
+ {
+     var trip = await _context.Trips.FindAsync(id);
+     if (trip == null)
+     {
+         _logger.LogWarning($"Trip with ID {id} not found for editing.");
+         return null;
+     }
+     if(await IsTripOverlaped(id,tripDto.DriverId,tripDto.VehicleId,tripDto.TripStartTime,tripDto.TripEndTime))
+     {
+         _logger.LogWarning("Trip edit failed due to overlap.");
+         throw new TripOverlapException("Trip overlap detected. Please choose different times or resources.");
+
+     }
+     trip.VehicleId = tripDto.VehicleId;
+     trip.DriverId = tripDto.DriverId;
+
+     trip.Origin = tripDto.Origin;
+     trip.Destination = tripDto.Destination;
+     trip.TripStartTime = tripDto.TripStartTime;
+     trip.TripEndTime = tripDto.TripEndTime;
+
+     await _context.SaveChangesAsync();
+     _logger.LogInformation($"Trip edited successfully {trip.TripId}");
+     return trip;
+ }
+
+
+public class TripDto
+{
+    public int? TripId { get; set; }   
+    public string Origin { get; set; }
+
+    public string Destination { get; set; }
+
+    public DateTime TripStartTime { get; set; }
+    public DateTime TripEndTime { get; set; }
+
+    public DateTime? SubmissionDate { get; set; }
+
+    public UserDto? Driver {  get; set; }
+    public UserDto? FleetManager { get; set; }
+
+    public VehicleDto? Vehicle { get; set; }
+
+    public int DriverId { get; set; }
+
+    
+    public int VehicleId { get; set; }
+    public int FleetManagerId { get; set; }
+}
+
+ [HttpPut("{id}")]
+ public async Task<IActionResult> EditTrip(TripDto tripDto, int id)
+ {
+     try
+     {
+         var trip = await _tripService.EditTripAsync(tripDto, id);
+         if (trip == null) return BadRequest();
+         return Ok(new { message = "Trip Updated Successfully" });
+
+
+     }
+     catch (TripOverlapException ex)
+     {
+         return Conflict(new { message = ex.Message });
+     }
+     catch (Exception ex)
+     {
+         return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
