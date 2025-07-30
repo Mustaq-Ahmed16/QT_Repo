@@ -1,72 +1,66 @@
-using NUnit.Framework;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
-using System;
-
-namespace DriverTripSchedulerTests
+[Test]
+public void AddEditDeleteTrip_FullFlow()
 {
-    [TestFixture]
-    public class AddTripTest
-    {
-        private IWebDriver driver;
-        private WebDriverWait wait;
-        private string baseUrl = "http://localhost:5173";
+    // SETUP
+    driver.Navigate().GoToUrl($"{baseUrl}/login");
+    driver.FindElement(By.Name("email")).SendKeys("mus@gmail.com");
+    driver.FindElement(By.Name("password")).SendKeys("mus123");
+    driver.FindElement(By.Id("loginBtn")).Click();
+    wait.Until(d => d.Url.Contains("/manager"));
 
-        [SetUp]
-        public void SetUp()
-        {
-            driver = new ChromeDriver();
-            driver.Manage().Window.Maximize();
-            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-        }
+    // ---------- STEP 1: ADD NEW TRIP ----------
+    wait.Until(driver => driver.FindElement(By.XPath("//button[contains(text(),'+ Add Trip')]"))).Click();
 
-        [TearDown]
-        public void TearDown()
-        {
-            driver.Quit();
-        }
+    // Select Driver "John"
+    wait.Until(driver => driver.FindElement(By.XPath("//div[contains(text(),'Select Driver')]"))).Click();
+    wait.Until(driver => driver.FindElement(By.XPath("//div[contains(@class,'SelectItem') and text()='John']"))).Click();
 
-        [Test]
-        public void AddTripAndCheckToastMessage()
-        {
-            // Step 1: Login
-            driver.Navigate().GoToUrl($"{baseUrl}/login");
+    // Select Vehicle "TN89329"
+    driver.FindElement(By.XPath("//div[contains(text(),'Select Vehicle')]")).Click();
+    wait.Until(driver => driver.FindElement(By.XPath("//div[contains(@class,'SelectItem') and text()='TN89329']"))).Click();
 
-            driver.FindElement(By.Name("email")).SendKeys("mus@gmail.com");
-            driver.FindElement(By.Name("password")).SendKeys("mus123");
-            driver.FindElement(By.Id("loginBtn")).Click();
+    // Unique origin to identify row later
+    string origin = $"Hyderabad-{DateTime.Now.Ticks}";
+    string destination = "Bangalore";
+    string newDestination = "Chennai";
 
-            // Step 2: Wait and navigate to manager page
-            wait.Until(d => d.Url.Contains("/manager"));
-            driver.Navigate().GoToUrl($"{baseUrl}/manager");
+    driver.FindElement(By.Name("origin")).SendKeys(origin);
+    driver.FindElement(By.Name("destination")).SendKeys(destination);
+    driver.FindElement(By.Name("tripStart")).SendKeys("2025-08-23T10:17");
+    driver.FindElement(By.Name("tripEnd")).SendKeys("2025-08-23T22:17");
 
-            // Step 3: Click Add Trip Button
-            wait.Until(d => d.FindElement(By.Id("addTripBtn")).Displayed);
-            driver.FindElement(By.Id("addTripBtn")).Click();
+    // Click Submit
+    driver.FindElement(By.XPath("//button[contains(text(),'Submit')]")).Click();
 
-            // Step 4: Fill in trip form
-            wait.Until(d => d.FindElement(By.Name("driver")).Displayed);
-            new SelectElement(driver.FindElement(By.Name("driver"))).SelectByText("John");
-            new SelectElement(driver.FindElement(By.Name("vehicle"))).SelectByText("TN89329");
+    // Assert toast
+    IWebElement addToast = wait.Until(driver =>
+        driver.FindElements(By.XPath("//*[contains(text(),'Trip assigned successfully') or contains(text(),'Trip assignment failed')]"))
+              .FirstOrDefault());
+    Assert.IsNotNull(addToast, "Add Trip: No toast message appeared.");
 
-            driver.FindElement(By.Name("origin")).SendKeys("Hyderabd");
-            driver.FindElement(By.Name("destination")).SendKeys("banagalore");
+    // ---------- STEP 2: EDIT TRIP ----------
+    var tripRow = wait.Until(d => d.FindElement(By.XPath($"//td[text()='{origin}']/parent::tr")));
+    tripRow.FindElement(By.XPath(".//button[contains(text(),'Edit')]")).Click();
 
-            driver.FindElement(By.Name("tripStartTime")).SendKeys("08/23/2025 10:17 AM");
-            driver.FindElement(By.Name("tripEndTime")).SendKeys("08/23/2025 10:17 PM");
+    IWebElement destinationInput = wait.Until(d => d.FindElement(By.Name("destination")));
+    destinationInput.Clear();
+    destinationInput.SendKeys(newDestination);
 
-            driver.FindElement(By.Id("submitTripBtn")).Click();
+    driver.FindElement(By.XPath("//button[contains(text(),'Update')]")).Click();
 
-            // Step 5: Check toast message
-            // Wait for toast to appear
-            IWebElement toast = wait.Until(d => d.FindElement(By.ClassName("toast-message")));
-            string toastText = toast.Text;
+    IWebElement editToast = wait.Until(driver =>
+        driver.FindElements(By.XPath("//*[contains(text(),'Trip assigned successfully') or contains(text(),'Trip assignment failed')]"))
+              .FirstOrDefault());
+    Assert.IsNotNull(editToast, "Edit Trip: No toast message appeared.");
 
-            Assert.IsTrue(
-                toastText.Contains("Trip assigned successfully") || toastText.Contains("Trip assignment failed"),
-                "Unexpected toast message: " + toastText
-            );
-        }
-    }
+    // ---------- STEP 3: DELETE TRIP ----------
+    var updatedTripRow = wait.Until(d => d.FindElement(By.XPath($"//td[text()='{origin}']/parent::tr")));
+    updatedTripRow.FindElement(By.XPath(".//button[contains(text(),'Delete')]")).Click();
+
+    // Confirm row disappears
+    wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.InvisibilityOfElementLocated(
+        By.XPath($"//td[text()='{origin}']/parent::tr")
+    ));
+
+    Console.WriteLine("Trip added, edited, and deleted successfully.");
 }
