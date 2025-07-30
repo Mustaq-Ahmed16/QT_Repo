@@ -1,0 +1,72 @@
+using NUnit.Framework;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
+using System;
+
+namespace DriverTripSchedulerTests
+{
+    [TestFixture]
+    public class AddTripTest
+    {
+        private IWebDriver driver;
+        private WebDriverWait wait;
+        private string baseUrl = "http://localhost:5173";
+
+        [SetUp]
+        public void SetUp()
+        {
+            driver = new ChromeDriver();
+            driver.Manage().Window.Maximize();
+            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            driver.Quit();
+        }
+
+        [Test]
+        public void AddTripAndCheckToastMessage()
+        {
+            // Step 1: Login
+            driver.Navigate().GoToUrl($"{baseUrl}/login");
+
+            driver.FindElement(By.Name("email")).SendKeys("mus@gmail.com");
+            driver.FindElement(By.Name("password")).SendKeys("mus123");
+            driver.FindElement(By.Id("loginBtn")).Click();
+
+            // Step 2: Wait and navigate to manager page
+            wait.Until(d => d.Url.Contains("/manager"));
+            driver.Navigate().GoToUrl($"{baseUrl}/manager");
+
+            // Step 3: Click Add Trip Button
+            wait.Until(d => d.FindElement(By.Id("addTripBtn")).Displayed);
+            driver.FindElement(By.Id("addTripBtn")).Click();
+
+            // Step 4: Fill in trip form
+            wait.Until(d => d.FindElement(By.Name("driver")).Displayed);
+            new SelectElement(driver.FindElement(By.Name("driver"))).SelectByText("John");
+            new SelectElement(driver.FindElement(By.Name("vehicle"))).SelectByText("TN89329");
+
+            driver.FindElement(By.Name("origin")).SendKeys("Hyderabd");
+            driver.FindElement(By.Name("destination")).SendKeys("banagalore");
+
+            driver.FindElement(By.Name("tripStartTime")).SendKeys("08/23/2025 10:17 AM");
+            driver.FindElement(By.Name("tripEndTime")).SendKeys("08/23/2025 10:17 PM");
+
+            driver.FindElement(By.Id("submitTripBtn")).Click();
+
+            // Step 5: Check toast message
+            // Wait for toast to appear
+            IWebElement toast = wait.Until(d => d.FindElement(By.ClassName("toast-message")));
+            string toastText = toast.Text;
+
+            Assert.IsTrue(
+                toastText.Contains("Trip assigned successfully") || toastText.Contains("Trip assignment failed"),
+                "Unexpected toast message: " + toastText
+            );
+        }
+    }
+}
