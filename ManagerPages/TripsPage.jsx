@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import jwtDecode from "jwt-decode";
 import axios from "axios";
 import apiClient from "@/apiClient";
 import { Button } from "@/components/ui/button";
@@ -23,36 +24,47 @@ export default function TripsPage() {
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [trips, setTrips] = useState([]);
-  const [managers,setManagers]=useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [editingTrip, setEditingTrip] = useState(0);
+  const [editingTrip, setEditingTrip] = useState(null);
+  const [fleetManager, setFleetManager] = useState({ id: "", name: "" });
+
   const [formData, setFormData] = useState({
-    fleetmanager:"",
-    driver: "",
-    vehicle: "",
+    driverId: "",
+    vehicleId: "",
     origin: "",
     destination: "",
     tripStart: "",
     tripEnd: "",
-    submissionDate:"",
   });
+
   const [page, setPage] = useState(1);
   const tripsPerPage = 5;
   const token = localStorage.getItem("token");
-  console.log(token);
+
+  useEffect(() => {
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setFleetManager({
+          id: decoded.fleetManagerId,
+          name: decoded.userName,
+        });
+      } catch (err) {
+        toast.error("❌ Invalid token");
+      }
+    }
+  }, [token]);
 
   const fetchData = async () => {
     try {
-      const [driversRes, vehiclesRes, tripsRes,managersRes] = await Promise.all([
+      const [driversRes, vehiclesRes, tripsRes] = await Promise.all([
         apiClient.get("/drivers"),
         apiClient.get("/vehicle/all"),
         apiClient.get("/trip"),
-        apiClient.get("/drivers/managers")
       ]);
       setDrivers(driversRes.data);
       setVehicles(vehiclesRes.data.result);
       setTrips(tripsRes.data);
-      setManagers(managersRes.data);
     } catch (err) {
       toast.error("❌ Failed to fetch data.");
     }
@@ -64,9 +76,8 @@ export default function TripsPage() {
 
   const resetForm = () => {
     setFormData({
-      fleetmanager:"",
-      driver: "",
-      vehicle: "",
+      driverId: "",
+      vehicleId: "",
       origin: "",
       destination: "",
       tripStart: "",
@@ -83,14 +94,12 @@ export default function TripsPage() {
   const openEditModal = (trip) => {
     setEditingTrip(trip);
     setFormData({
-      fleetmanager:trip.fleetManagerId,
-      driver: trip.driverId,
-      vehicle: trip.vehicleId,
+      driverId: trip.driverId,
+      vehicleId: trip.vehicleId,
       origin: trip.origin,
       destination: trip.destination,
       tripStart: trip.tripStartTime.slice(0, 16),
       tripEnd: trip.tripEndTime.slice(0, 16),
-      
     });
     setShowModal(true);
   };
@@ -104,8 +113,10 @@ export default function TripsPage() {
       ...formData,
       tripStartTime: new Date(formData.tripStart).toISOString(),
       tripEndTime: new Date(formData.tripEnd).toISOString(),
-      
+      fleetManagerId: fleetManager.id,
     };
+
+    if (editingTrip) adjustedData.tripId = editingTrip.tripId;
 
     const confirmAction = editingTrip ? "Update" : "Assign";
     toast.promise(
@@ -148,9 +159,7 @@ export default function TripsPage() {
     toast.promise(
       axios
         .delete(`https://localhost:7014/api/trip/${tripId}`)
-        .then(() => {
-          fetchData();
-        }),
+        .then(() => fetchData()),
       {
         loading: "Deleting trip...",
         success: "🗑️ Trip deleted",
@@ -187,12 +196,11 @@ export default function TripsPage() {
           </Button>
         </div>
 
-        {/* Trip Table */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse shadow rounded-md">
             <thead className="bg-blue-100 text-blue-800 text-sm">
               <tr>
-                {["Fleet Manager","Driver", "Vehicle", "Origin", "Destination", "Trip Start", "Trip End","Submission", "Status", "Actions"].map((col) => (
+                {["Fleet Manager", "Driver", "Vehicle", "Origin", "Destination", "Trip Start", "Trip End", "Submission", "Status", "Actions"].map((col) => (
                   <th key={col} className="p-2">{col}</th>
                 ))}
               </tr>
@@ -219,7 +227,6 @@ export default function TripsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex justify-center mt-4">
           {[...Array(Math.ceil(trips.length / tripsPerPage)).keys()].map((n) => (
             <button
@@ -235,47 +242,64 @@ export default function TripsPage() {
         </div>
       </div>
 
-      {/* Modal for Add/Edit Trip */}
+      {/* Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="bg-white rounded-lg shadow-lg max-w-md mx-auto">
+        <DialogContent className="bg-white rounded-lg shadow-lg max-w-md mx ​:contentReference[oaicite:0]{index=0}
+                <DialogContent className="bg-white rounded-lg shadow-lg max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>
               {editingTrip ? "✏️ Edit Trip" : "📝 Assign New Trip"}
             </DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4 mt-2">
+            {/* Fleet Manager (disabled) */}
+            <Input
+              label="Fleet Manager"
+              value={fleetManager.name}
+              disabled
+              className="bg-gray-100"
+            />
+
+            {/* Driver Select */}
             <Select
-              value={formData.driver}
-              onValueChange={(value) => setFormData({ ...formData, driver: value })}
+              value={formData.driverId}
+              onValueChange={(value) =>
+                setFormData({ ...formData, driverId: value })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Driver" />
               </SelectTrigger>
               <SelectContent>
                 {drivers.map((d) => (
-                  <SelectItem key={d.driverId} value={d.name}>
-                                      {d.driverId}. {d.name}
+                  <SelectItem key={d.driverId} value={d.driverId}>
+                    {d.driverId}. {d.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
+            {/* Vehicle Select */}
             <Select
-              value={formData.vehicle}
-              onValueChange={(value) => setFormData({ ...formData, vehicle: value })}
+              value={formData.vehicleId}
+              onValueChange={(value) =>
+                setFormData({ ...formData, vehicleId: value })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Vehicle" />
               </SelectTrigger>
               <SelectContent>
                 {vehicles.map((v) => (
-                  <SelectItem key={v.vehicleId} value={v.vehicleNumber}>
+                  <SelectItem key={v.vehicleId} value={v.vehicleId}>
                     {v.vehicleNumber}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
+            {/* Origin & Destination */}
             <Input
               name="origin"
               placeholder="Origin"
@@ -290,6 +314,8 @@ export default function TripsPage() {
               onChange={handleInput}
               required
             />
+
+            {/* Trip Times */}
             <Input
               name="tripStart"
               type="datetime-local"
@@ -328,3 +354,4 @@ export default function TripsPage() {
     </div>
   );
 }
+​
