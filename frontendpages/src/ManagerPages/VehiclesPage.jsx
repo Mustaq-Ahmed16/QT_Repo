@@ -10,8 +10,8 @@ const API_BASE = "https://localhost:7014/api/vehicle";
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState([]);
   const [form, setForm] = useState({
-    id: null,
-    number: "",
+    id: "",
+    vehicleNumber: "",
     model: "",
     capacity: "",
   });
@@ -41,7 +41,7 @@ export default function VehiclesPage() {
 
   const handleSave = async () => {
     const payload = {
-      vehicleNumber: form.number,
+      vehicleNumber: form.vehicleNumber,
       model: form.model,
       capacity: form.capacity,
     };
@@ -71,8 +71,8 @@ export default function VehiclesPage() {
 
   const handleEdit = (v) => {
     setForm({
-      id: v.id,
-      number: v.vehicleNumber,
+      id: Number(v.vehicleId),
+      vehicleNumber: v.vehicleNumber,
       model: v.model,
       capacity: v.capacity,
     });
@@ -91,7 +91,7 @@ export default function VehiclesPage() {
   };
 
   const resetForm = () => {
-    setForm({ id: null, number: "", model: "", capacity: "" });
+    setForm({ id: null, vehicleNumber: "", model: "", capacity: "" });
     setEditing(false);
   };
 
@@ -184,7 +184,7 @@ export default function VehiclesPage() {
                   <td className="p-2">{v.model}</td>
                   <td className="p-2 text-center">{v.capacity}</td>
                   <td className="p-2 space-x-2 text-center">
-                    <Button size="sm" onClick={() => handleEdit(v.vehicleId)}>
+                    <Button size="sm" onClick={() => handleEdit(v)}>
                       Edit
                     </Button>
                     <Button
