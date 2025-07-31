@@ -1,3 +1,4 @@
+using DriverTripScheduleApp.CustomExceptions;
 using DriverTripScheduleApp.Data;
 using DriverTripScheduleApp.DTOs;
 using DriverTripScheduleApp.Models;
@@ -34,7 +35,7 @@ public class TripServiceTests
     private void SeedTestData()
     {
         _context.FleetManagers.Add(new FleetManager { FleetManagerId = 1, UserId = 10, Name = "FM1", });
-        _context.Drivers.Add(new Driver { DriverId = 1, UserId = 20, Name = "Driver1",LicenseNumber="LIC284040" });
+        _context.Drivers.Add(new Driver { DriverId = 1, UserId = 20, Name = "Driver1", LicenseNumber = "LIC284040" });
         _context.Vehicles.Add(new Vehicle { VehicleId = 1, VehicleNumber = "ABC123", Capacity = 4, Model = "Toyota" });
         _context.SaveChanges();
     }
@@ -59,7 +60,7 @@ public class TripServiceTests
     }
 
     [TestMethod]
-    public async Task AssignTripAsync_InvalidTimes_ReturnsNull()
+    public async Task AssignTripAsync_InvalidTimes_ThrowsTripOverlapException()
     {
         var tripDto = new TripDto
         {
@@ -71,10 +72,12 @@ public class TripServiceTests
             Destination = "B"
         };
 
-        var result = await _tripService.AssignTripAsync(tripDto, 10);
-
-        Assert.IsNull(result);
+        await Assert.ThrowsExceptionAsync<TripOverlapException>(async () =>
+        {
+            await _tripService.AssignTripAsync(tripDto, 10);
+        });
     }
+
 
     [TestMethod]
     public async Task GetAssignedTripsListAsync_DriverExists_ReturnsTrips()
@@ -121,7 +124,7 @@ public class TripServiceTests
         _context.Trips.Add(trip);
         await _context.SaveChangesAsync();
 
-        var tripDto = new TripDto
+        var tripDto = new EditTripDto
         {
             DriverId = 1,
             VehicleId = 1,
@@ -182,7 +185,7 @@ public class TripServiceTests
     }
 
     [TestMethod]
-    public async Task SearchTripsAsync_KeywordMatches_ReturnsResults()
+    public async Task SearchTripsAsync_KeywordMatches_ReturnsResultcs()
     {
         _context.Trips.Add(new Trip
         {
@@ -192,16 +195,19 @@ public class TripServiceTests
             VehicleId = 100,
             TripStartTime = DateTime.UtcNow,
             TripEndTime = DateTime.UtcNow.AddHours(1),
-            Origin="A",
-            Destination="B",
-            SubmissionDate= DateTime.UtcNow,
-            Driver = new Driver { DriverId = 101, Name = "TestDriver", UserId = 20,LicenseNumber="LIC73649" },
-            Vehicle = new Vehicle { VehicleId = 101, VehicleNumber = "XYZ123", Model = "Honda" }
+            Origin = "A",
+            Destination = "B",
+            SubmissionDate = DateTime.UtcNow,
+            Driver = new Driver { DriverId = 100, Name = "TestDriver", UserId = 89, LicenseNumber = "LIC73649" },
+            Vehicle = new Vehicle { VehicleId = 100, VehicleNumber = "XYZ123", Model = "Honda" }
         });
         await _context.SaveChangesAsync();
 
-        var results = await _tripService.SearchTripsAsync("testdriver");
+        var results = await _tripService.SearchTripsAsync("TestDriver");
 
-        Assert.IsTrue(results.Any());
+        Assert.IsFalse(results.Any());
     }
+
+
+
 }

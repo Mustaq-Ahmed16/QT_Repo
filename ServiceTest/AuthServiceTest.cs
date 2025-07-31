@@ -1,3 +1,4 @@
+using Castle.Core.Logging;
 using DriverTripScheduleApp.Data;
 using DriverTripScheduleApp.DTOs;
 using DriverTripScheduleApp.Models;
@@ -5,6 +6,9 @@ using DriverTripScheduleApp.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
 
 namespace DriverTripScheduleAppTest;
 
@@ -14,6 +18,8 @@ public class AuthServiceTest
     private AuthService _authService;
     private AppDbContext _appDbContext;
     private IConfiguration _configuration;
+    private Mock<ILogger<AuthService>> _loggerMock;
+
 
     [TestInitialize]
     public void Setup()
@@ -26,7 +32,8 @@ public class AuthServiceTest
         var inMemorySettings = new Dictionary<string, string> { { "Jwt:Key", "Thisissecretkeyfortokenbweyvcwuv783293874bdxuiqn" }, { "Jwt:Issuer", "TestIssuer" }, { "Jwt:Audience", "TestAudience" } };
 
         _configuration = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
-        _authService=new AuthService(_appDbContext, _configuration);
+        _loggerMock = new Mock<ILogger<AuthService>>();
+        _authService =new AuthService(_appDbContext, _configuration,_loggerMock.Object);
 
     }
 
@@ -39,7 +46,10 @@ public class AuthServiceTest
             Email = "mustaq@gmail.com",
             Password = "mus123",
             Role = "FleetManager",
-            Name="Mustaq"
+            Name="Mustaq",
+            LicenseNumber="LIC675936",
+            SecretKey="Fleet@2004"
+
 
         };
 
@@ -56,12 +66,13 @@ public class AuthServiceTest
     [TestMethod]
     public async Task IsEmailExistsAsync_ShouldReturnTrue_IfEmailExists()
     {
-        var user = new User { Email = "john@gmail.com", Password = "john123", Role = "FleetManager" };
+        var user = new User { UserId=2,Username="John", Email = "john@gmail.com", Password = "john123", Role = "FleetManager" };
         _appDbContext.Users.Add(user);
         await _appDbContext.SaveChangesAsync();
 
         //Act
         var exists = await _authService.IsEmailExistsAsync("john@gmail.com");
+        Console.WriteLine(exists);
         Assert.IsTrue(exists);
 
     }
@@ -71,7 +82,7 @@ public class AuthServiceTest
     {
         //Arrange
         var password = BCrypt.Net.BCrypt.HashPassword("password123");
-        var user = new User { Email = "testuser@gmail.com", Password = password, Role = "Driver" };
+        var user = new User { UserId=3,Username="Test",Email = "testuser@gmail.com", Password = password, Role = "Driver" };
         _appDbContext.Users.Add(user);
         await _appDbContext.SaveChangesAsync();
 
@@ -79,7 +90,7 @@ public class AuthServiceTest
 
         //Act
         var result = await _authService.LoginUserAsync(loginDto);
-
+        
         //Assert
         Assert.IsNotNull(result);
 
@@ -106,18 +117,18 @@ public class AuthServiceTest
     public async Task RegisterDriverAsync_ShouldRegisterDriver()
     {
         //arrange
-        var dto = new RegisterDto { Email = "driver@gmail.com", Password = "pass123", Name = "DriverOne", LicenseNumber = "DL64682" };
+        var dto = new RegisterDriverDto { Email = "driver@gmail.com", Password = "pass123", Name = "DriverOne", LicenseNumber = "DL64682"};
 
         var isExistsDriver = await _authService.IsEmailExistsAsync(dto.Email);
         Assert.IsFalse(isExistsDriver);
-        var user =await _authService.RegisterUserAsync(dto);
+        var user =await _authService.RegisterDriverAsync(dto);
         await _appDbContext.SaveChangesAsync();
 
-        var driver = new Driver { UserId = user.UserId, Name = dto.Name, LicenseNumber = dto.LicenseNumber };
-        _appDbContext.Drivers.Add(driver);
-        await _appDbContext.SaveChangesAsync();
+        //var driver = new Driver { UserId = user.UserId, Name = dto.Name, LicenseNumber = dto.LicenseNumber };
+        //_appDbContext.Drivers.Add(driver);
+        //await _appDbContext.SaveChangesAsync();
 
-        Assert.IsNotNull(driver);
-        Assert.AreEqual("DriverOne", driver.Name);
+        Assert.IsNotNull(user);
+        Assert.AreEqual("DriverOne", user.Name);
     }
 }

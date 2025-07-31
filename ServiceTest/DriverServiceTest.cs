@@ -6,15 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
 
 namespace DriverTripScheduleAppTest
 {
     [TestClass]
-    public class DriverServiceTests
+    public class DriverServiceTest
     {
         private AppDbContext _context;
         private Mock<ILogger<DriverService>> _loggerMock;
@@ -36,7 +33,7 @@ namespace DriverTripScheduleAppTest
 
         private void SeedTestData()
         {
-            _context.Users.Add(new User { UserId = 1, Username = "DriverUser" });
+            _context.Users.Add(new User { UserId = 1, Username = "DriverUser",Email="driver@gmail.com",Password="driver123" });
             _context.Drivers.Add(new Driver
             {
                 DriverId = 1,
