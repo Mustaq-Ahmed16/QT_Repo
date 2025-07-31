@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import toast, { Toaster } from "react-hot-toast";
 
-const API_BASE = "https://localhost:7291/api";
+const API_BASE = "https://localhost:7014/api";
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState([]);
@@ -21,7 +21,7 @@ export default function DriversPage() {
     licenseNumber: "",
     email: "",
     password: "",
-    phone: "",
+   
   });
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -92,7 +92,7 @@ export default function DriversPage() {
             licenseNumber: form.licenseNumber,
             email: form.email,
             password: form.password,
-            phone: form.phone,
+           
           }),
         });
         if (!res.ok) {
@@ -119,7 +119,7 @@ export default function DriversPage() {
       licenseNumber: driver.licenseNumber,
       email: "",
       password: "",
-      phone: "",
+      
     });
     setIsEditing(true);
     setDialogOpen(true);
@@ -146,7 +146,7 @@ export default function DriversPage() {
       licenseNumber: "",
       email: "",
       password: "",
-      phone: "",
+     
     });
     setIsEditing(false);
   };
@@ -209,13 +209,7 @@ export default function DriversPage() {
                         placeholder="Password"
                         disabled={loading}
                       />
-                      <Input
-                        name="phone"
-                        value={form.phone}
-                        onChange={handleChange}
-                        placeholder="Phone"
-                        disabled={loading}
-                      />
+                      
                     </>
                   )}
                 </div>
