@@ -2,6 +2,8 @@
 using DriverTripScheduleApp.DTOs;
 using DriverTripScheduleApp.IRepositories;
 using DriverTripScheduleApp.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -27,10 +29,27 @@ namespace DriverTripScheduleApp.Services
         public async Task<bool> IsEmailExistsAsync(string email)
         {
             _logger.LogInformation("Verifying the email:{Email} if already exists or not", email);
-            return await _context.Users.AnyAsync(u => u.Email == email);
+            var isExists = await _context.Users.AnyAsync(u => u.Email == email);
+            Console.WriteLine(isExists);
+            return isExists;
+        }
+        private bool VerifyManager(string secretKey)
+        {
+            const string managerKey = "Fleet@2004";
+            if (secretKey != managerKey)
+            {
+                return false;
+            }
+            return true;
         }
         public async Task<User> RegisterUserAsync(RegisterDto registerDto)
         {
+            if (registerDto.Role == "FleetManager")
+            {
+                var isManager = VerifyManager(registerDto.SecretKey);
+                if (!isManager) return null;
+            }
+                
             var email = await IsEmailExistsAsync(registerDto.Email);
             if (email == null)
             {
@@ -43,6 +62,7 @@ namespace DriverTripScheduleApp.Services
 
                 Email = registerDto.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                Username = registerDto.Name,
                 Role = registerDto.Role,
             };
             _context.Users.Add(user);
@@ -68,6 +88,7 @@ namespace DriverTripScheduleApp.Services
         {
             _logger.LogInformation("Attempting login for {Email}", logindto.Email);
             var user = _context.Users.FirstOrDefault(u => u.Email == logindto.Email);
+         
             if (user == null || !BCrypt.Net.BCrypt.Verify(logindto.Password, user.Password))
             {
                 _logger.LogWarning("Login failed:User not found for {Email}",logindto.Email);
@@ -99,7 +120,7 @@ namespace DriverTripScheduleApp.Services
                 signingCredentials: creds);
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-        public async Task<Driver> RegisterDriverAsync(RegisterDto registerdto)
+        public async Task<Driver> RegisterDriverAsync(RegisterDriverDto registerdto)
         {
             if (await _context.Users.AnyAsync(u => u.Email == registerdto.Email))
             {
@@ -110,6 +131,7 @@ namespace DriverTripScheduleApp.Services
             {
                 Email = registerdto.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(registerdto.Password),
+                Username=registerdto.Name,
                 Role = "Driver"
             };
             _context.Users.Add(user);
@@ -121,5 +143,8 @@ namespace DriverTripScheduleApp.Services
             _logger.LogInformation($"Registered Driver : {registerdto.Name}");
             return driver;
         }
+
+
+       
     }
 }
