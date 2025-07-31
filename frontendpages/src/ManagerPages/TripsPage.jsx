@@ -26,12 +26,14 @@ export default function TripsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTrip, setEditingTrip] = useState(0);
   const [formData, setFormData] = useState({
+   
     driverId: "",
     vehicleId: "",
     origin: "",
     destination: "",
     tripStart: "",
     tripEnd: "",
+
   });
   const [page, setPage] = useState(1);
   const tripsPerPage = 5;
@@ -59,6 +61,7 @@ export default function TripsPage() {
 
   const resetForm = () => {
     setFormData({
+     
       driverId: "",
       vehicleId: "",
       origin: "",
@@ -77,12 +80,14 @@ export default function TripsPage() {
   const openEditModal = (trip) => {
     setEditingTrip(trip);
     setFormData({
-      driverId: trip.driverId,
-      vehicleId: trip.vehicleId,
+      
+      driver: trip.driverId,
+      vehicle: trip.vehicleId,
       origin: trip.origin,
       destination: trip.destination,
       tripStart: trip.tripStartTime.slice(0, 16),
       tripEnd: trip.tripEndTime.slice(0, 16),
+      
     });
     setShowModal(true);
   };
@@ -94,8 +99,11 @@ export default function TripsPage() {
   const handleSubmit = async () => {
     const adjustedData = {
       ...formData,
+      driverId:parseInt(formData.driverId),
+      vehicleId:parseInt(formData.vehicleId),
       tripStartTime: new Date(formData.tripStart).toISOString(),
       tripEndTime: new Date(formData.tripEnd).toISOString(),
+      
     };
 
     const confirmAction = editingTrip ? "Update" : "Assign";
@@ -103,8 +111,8 @@ export default function TripsPage() {
       new Promise(async (resolve, reject) => {
         try {
           const url = editingTrip
-            ? `https://localhost:7291/api/trip/${editingTrip.tripId}`
-            : "https://localhost:7291/api/trip/assign-trip";
+            ? `https://localhost:7014/api/trip/${editingTrip.tripId}`
+            : "https://localhost:7014/api/trip/assign-trip";
           const method = editingTrip ? "PUT" : "POST";
 
           const response = await fetch(url, {
@@ -138,7 +146,7 @@ export default function TripsPage() {
   const handleDelete = async (tripId) => {
     toast.promise(
       axios
-        .delete(`https://localhost:7291/api/trip/${tripId}`)
+        .delete(`https://localhost:7014/api/trip/${tripId}`)
         .then(() => {
           fetchData();
         }),
@@ -150,8 +158,8 @@ export default function TripsPage() {
     );
   };
 
-  const getStatusBadge = (startTime) => {
-    const isUpcoming = new Date(startTime) > new Date();
+  const getStatusBadge = (endTime) => {
+    const isUpcoming = new Date(endTime) > new Date();
     return (
       <span
         className={`px-3 py-1 rounded-full text-sm font-medium text-white ${
@@ -169,11 +177,11 @@ export default function TripsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-cyan-400 to-teal-300 p-8 text-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-cyan-400 to-teal-300 p-4 text-gray-800">
       <div className="max-w-6xl mx-auto bg-white shadow-xl rounded-xl p-6 space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-extrabold text-blue-900">🚗 Trip Scheduler</h1>
-          <Button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+          <Button id="addTripBtn" onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
             + Add Trip
           </Button>
         </div>
@@ -183,7 +191,7 @@ export default function TripsPage() {
           <table className="w-full border-collapse shadow rounded-md">
             <thead className="bg-blue-100 text-blue-800 text-sm">
               <tr>
-                {["Driver", "Vehicle", "Origin", "Destination", "Start", "End", "Status", "Actions"].map((col) => (
+                {["Fleet Manager","Driver", "Vehicle", "Origin", "Destination", "Trip Start", "Trip End","Submission", "Status", "Actions"].map((col) => (
                   <th key={col} className="p-2">{col}</th>
                 ))}
               </tr>
@@ -191,13 +199,15 @@ export default function TripsPage() {
             <tbody>
               {paginatedTrips.map((trip) => (
                 <tr key={trip.tripId} className="text-center hover:bg-gray-100 transition">
-                  <td className="p-2">{trip.driverId}</td>
-                  <td className="p-2">{trip.vehicleId}</td>
+                  <td className="p-2">{trip.fleetManager?.userName}</td>
+                  <td className="p-2">{trip.driver?.userName}</td>
+                  <td className="p-2">{trip.vehicle?.vehicleNumber}</td>
                   <td className="p-2">{trip.origin}</td>
                   <td className="p-2">{trip.destination}</td>
                   <td className="p-2">{new Date(trip.tripStartTime).toLocaleString()}</td>
                   <td className="p-2">{new Date(trip.tripEndTime).toLocaleString()}</td>
-                  <td className="p-2">{getStatusBadge(trip.tripStartTime)}</td>
+                  <td className="p-2">{new Date(trip.submissionDate).toLocaleString()}</td>
+                  <td className="p-2">{getStatusBadge(trip.tripEndTime)}</td>
                   <td className="p-2 flex justify-center space-x-2">
                     <Button variant="outline" onClick={() => openEditModal(trip)}>Edit</Button>
                     <Button variant="destructive" onClick={() => handleDelete(trip.tripId)}>Delete</Button>
@@ -223,7 +233,7 @@ export default function TripsPage() {
           ))}
         </div>
       </div>
-
+        
       {/* Modal for Add/Edit Trip */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="bg-white rounded-lg shadow-lg max-w-md mx-auto">
@@ -233,6 +243,8 @@ export default function TripsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+          
+            
             <Select
               value={formData.driverId}
               onValueChange={(value) => setFormData({ ...formData, driverId: value })}
@@ -242,8 +254,8 @@ export default function TripsPage() {
               </SelectTrigger>
               <SelectContent>
                 {drivers.map((d) => (
-                  <SelectItem key={d.driverId} value={d.driverId}>
-                                        {d.name}
+                  <SelectItem key={d.driverId} value={d.driverId.toString()}>
+                                      {d.driverId}. {d.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -279,13 +291,16 @@ export default function TripsPage() {
               onChange={handleInput}
               required
             />
+            <label>Trip Start Time</label>
             <Input
               name="tripStart"
               type="datetime-local"
+              
               value={formData.tripStart}
               onChange={handleInput}
               required
             />
+            <label>Trip End Time</label>
             <Input
               name="tripEnd"
               type="datetime-local"
@@ -297,6 +312,7 @@ export default function TripsPage() {
 
           <DialogFooter className="mt-4 flex justify-end space-x-3">
             <Button
+              id="submit"
               onClick={handleSubmit}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
@@ -317,4 +333,3 @@ export default function TripsPage() {
     </div>
   );
 }
-
